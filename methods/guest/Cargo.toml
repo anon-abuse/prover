@@ -1,0 +1,23 @@
+[package]
+name = "method"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+
+[dependencies]
+# If you want to try (experimental) std support, add `features = [ "std" ]` to risc0-zkvm
+risc0-zkvm = { version = "0.19.1", default-features = false, features = [
+    "std",
+] }
+# primitives = { path = "../../primitives" }
+utils = { path = "../../utils" }
+json = "0.12"
+alloy-primitives = { version = "0.4", default-features = false, features = [
+    "rlp",
+    "serde",
+    "std",
+] }
+alloy-rlp = { version = "0.3", default-features = false }
+alloy-rlp-derive = { version = "0.3", default-features = false }
+hex = "0.4.3"
