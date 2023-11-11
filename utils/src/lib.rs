@@ -20,4 +20,4 @@ pub mod transactions;
 pub mod access_list;
 pub mod keccak;
 pub mod signature;
-
+pub mod trie;
