@@ -3,14 +3,15 @@
 use risc0_zkvm::guest::env;
 // use utils::transactions;
 use alloy_primitives::{
-    address, b256, bytes, Address, Bytes, ChainId, FixedBytes, TxNumber, B256, U256,
+    address, b256, bytes, Address, Bytes, ChainId, FixedBytes, TxNumber, B256, U256, Sign,
 };
 use alloy_rlp::Encodable;
 use json::parse;
 use utils::{
     self,
     keccak::keccak,
-    transactions::transactions::{EthereumTxEssence, TransactionKind, TxEssenceEip1559},
+    transactions::{Transaction, transactions::{EthereumTxEssence, TransactionKind, TxEssenceEip1559}},
+    signature::TxSignature,
 };
 
 risc0_zkvm::guest::entry!(main);
@@ -32,26 +33,49 @@ pub fn main() {
     let data: String = env::read();
     // let sha = *Impl::hash_bytes(&data.as_bytes());
     let data1 = parse(&data).unwrap();
-    let nonce_hex: &str = data1["nonce"].as_str().unwrap();
-    let max_priority_fee_per_gas_hex = data1["maxPriorityFeePerGas"].as_str().unwrap();
-    let max_fee_per_gas_hex = data1["maxFeePerGas"].as_str().unwrap();
-    let value_hex: &str = data1["value"].as_str().unwrap();
-    let gas_limit_hex = data1["gasLimit"].as_str().unwrap();
-    let to_hex = data1["to"].as_str().unwrap();
+    let nonce_hex: &str = data1["result"]["nonce"].as_str().unwrap();
+    let max_priority_fee_per_gas_hex = data1["result"]["maxPriorityFeePerGas"].as_str().unwrap();
+    let max_fee_per_gas_hex = data1["result"]["maxFeePerGas"].as_str().unwrap();
+    let value_hex: &str = data1["result"]["value"].as_str().unwrap();
+    let gas_limit_hex = data1["result"]["gas"].as_str().unwrap();
+    let to_hex = data1["result"]["to"].as_str().unwrap();
+    let chain_id_hex = data1["result"]["chainId"].as_str().unwrap();
+    let v_hex = data1["result"]["v"].as_str().unwrap();
+    let r_hex = data1["result"]["r"].as_str().unwrap();
+    let s_hex = data1["result"]["s"].as_str().unwrap();
+
 
     let nonce: u64 = hex_to_u64(nonce_hex);
+
+
     let max_priority_fee_per_gas: U256 = max_priority_fee_per_gas_hex.parse().unwrap();
     let max_fee_per_gas: U256 = max_fee_per_gas_hex.parse().unwrap();
+    println!("2");
     let value: U256 = value_hex.parse().unwrap();
+    println!("3");
     let to: Address = to_hex.trim_start_matches("0x").parse().unwrap();
+    println!("4");
     let gas_limit: U256 = gas_limit_hex.parse().unwrap();
-    println!("max_priority_fee_per_gas is {:?}", max_priority_fee_per_gas);
-    let data_hex = data1["data"].as_str().unwrap();
+    println!("5");
+    let data_hex = data1["result"]["input"].as_str().unwrap();
+    println!("6");
     // let data_bytes: Bytes = Bytes::new();
     let data_bytes = data_hex.parse::<Bytes>().unwrap();
 
+    println!("data_bytes is {:?}", data_bytes);
+
+    let chain_id: u64 = hex_to_u64(chain_id_hex);
+
+    println!("r is {:?}", r_hex);
+    println!("s is {:?}", s_hex);
+    println!("v is {:?}", v_hex);
+
+    let r: U256 = r_hex.parse().unwrap();
+    let s: U256 = s_hex.parse().unwrap();
+    let v: u64 = hex_to_u64(v_hex);
+
     let tx_essense: TxEssenceEip1559 = TxEssenceEip1559 {
-        chain_id: 5,
+        chain_id,
         nonce,
         max_priority_fee_per_gas,
         max_fee_per_gas,
@@ -61,6 +85,22 @@ pub fn main() {
         data: data_bytes,
         access_list: utils::access_list::AccessList(Vec::new()),
     };
+
+
+    let tx_signature: TxSignature = TxSignature {
+        v: v,
+        r: r,
+        s: s,
+    };
+
+    let tx = Transaction {
+      essence: EthereumTxEssence::Eip1559(tx_essense.clone()) ,
+      signature: tx_signature
+    };
+
+    let tx_hash = tx.hash();
+    let tx_hash_string = hex::encode(tx_hash);
+    println!("tx_hash_string: ${:?}", tx_hash_string);
 
     let eth_tx_essence = EthereumTxEssence::Eip1559(tx_essense);
     let mut rlp_buf: Vec<u8> = Vec::new();
