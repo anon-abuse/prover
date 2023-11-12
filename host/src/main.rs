@@ -2,6 +2,7 @@
 // The ELF is used for proving and the ID is used for verification.
 use methods::{METHOD_ELF, METHOD_ID};
 use risc0_zkvm::{default_prover, ExecutorEnv};
+use utils::outputs::Outputs;
 
 fn main() {
     // // Initialize tracing. In order to view logs, run `RUST_LOG=info cargo run`
@@ -39,29 +40,10 @@ fn main() {
     // receipt.verify(METHOD_ID).unwrap();
 
     let data = include_str!("../res/example.json");
-    println!("+++++++++++++++");
-    let outputs = search_json(data);
-    // println!("  {:?}", outputs.hash);
-    // println!(
-    //     "provably contains a field 'critical_data' with value {}",
-    //     outputs.data
-    // );
-}
+    let inputs = (data, "0x7056d6acec70222bf55a385a10dc04273ee1cddb");
 
-// fn main() {
-//     let data = include_str!("../res/example.json");
-//     let outputs = search_json(data);
-//     println!();
-//     println!("  {:?}", outputs.hash);
-//     println!(
-//         "provably contains a field 'critical_data' with value {}",
-//         outputs.data
-//     );
-// }
-
-fn search_json(data: &str) {
     let env = ExecutorEnv::builder()
-        .write(&data)
+        .write(&inputs)
         .unwrap()
         .build()
         .unwrap();
@@ -69,9 +51,26 @@ fn search_json(data: &str) {
     // Obtain the default prover.
     let prover = default_prover();
 
-    println!("!#$%#@#!@%@%@");
     // Produce a receipt by proving the specified ELF binary.
     let receipt = prover.prove_elf(env, METHOD_ELF).unwrap();
 
-    // receipt.journal.decode().unwrap();
+    let outputs: Outputs = receipt.journal.decode().unwrap();
+
+    println!(
+      "provably contains a field 'to' with value {}",
+      outputs.phishing_address
+    );
+
+    println!(
+      "provably contains a field 'from' with value {}",
+      outputs.phished_address
+    );
+
+    println!(
+      "provably is the transaction with hash {}",
+      outputs.transaction_hash
+    );
+
+    //receipt.verify(METHOD_ID).unwrap();
 }
+

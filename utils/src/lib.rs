@@ -21,6 +21,7 @@ pub mod keccak;
 pub mod signature;
 pub mod transactions;
 pub mod trie;
+pub mod outputs;
 
 pub use alloy_rlp as rlp;
 
