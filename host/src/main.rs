@@ -42,7 +42,7 @@ fn main() {
     let data = include_str!("../res/sepolia_transaction.json");
     let merkle_proof = include_str!("../res/sepolia_proof.json");
     let phisher = "0x2c5a41bc6c0c09e38c7d3cd7717c12f03a0f8162";
-    let transaction_trie_root = "0x5a6d7695b71858b4f21e0574b687a555708d8ea6464c1cfa788fbeb8282affc0"
+    let transaction_trie_root = "0x5a6d7695b71858b4f21e0574b687a555708d8ea6464c1cfa788fbeb8282affc0";
     let inputs = (data, phisher, merkle_proof, transaction_trie_root);
 
     let env = ExecutorEnv::builder()

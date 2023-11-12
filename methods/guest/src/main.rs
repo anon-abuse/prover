@@ -2,28 +2,38 @@
 
 use risc0_zkvm::guest::env;
 // use utils::transactions;
-use utils::outputs::Outputs;
 use alloy_primitives::{
-    address, b256, bytes, Address, Bytes, ChainId, FixedBytes, TxNumber, B256, U256, Sign,
+    address, b256, bytes, Address, Bytes, ChainId, FixedBytes, Sign, TxNumber, B256, U256,
 };
 use alloy_rlp::Encodable;
 use json::parse;
+use utils::outputs::Outputs;
 use utils::{
     self,
     keccak::keccak,
-    transactions::{Transaction, transactions::{EthereumTxEssence, TransactionKind, TxEssenceEip1559}},
     signature::TxSignature,
+    transactions::{
+        transactions::{EthereumTxEssence, TransactionKind, TxEssenceEip1559},
+        Transaction,
+    },
 };
 
 risc0_zkvm::guest::entry!(main);
 
 pub fn main() {
-    let (transaction, target_address, merkle_proof, transactions_root  ): (String, String, String, String) = env::read();
+    let (transaction, target_address, merkle_proof, transactions_root): (
+        String,
+        String,
+        String,
+        String,
+    ) = env::read();
 
     let transaction_json = parse(&transaction).unwrap();
 
     let nonce_hex: &str = transaction_json["result"]["nonce"].as_str().unwrap();
-    let max_priority_fee_per_gas_hex = transaction_json["result"]["maxPriorityFeePerGas"].as_str().unwrap();
+    let max_priority_fee_per_gas_hex = transaction_json["result"]["maxPriorityFeePerGas"]
+        .as_str()
+        .unwrap();
     let max_fee_per_gas_hex = transaction_json["result"]["maxFeePerGas"].as_str().unwrap();
     let value_hex: &str = transaction_json["result"]["value"].as_str().unwrap();
     let gas_limit_hex = transaction_json["result"]["gas"].as_str().unwrap();
@@ -34,6 +44,32 @@ pub fn main() {
     let r_hex = transaction_json["result"]["r"].as_str().unwrap();
     let s_hex = transaction_json["result"]["s"].as_str().unwrap();
 
+    let merkle_proof_json = parse(&merkle_proof).unwrap();
+    let proof_len = merkle_proof_json["proof"].len();
+
+    let mut resultant: Bytes = merkle_proof_json["proof"][0]
+        .as_str()
+        .unwrap()
+        .parse::<Bytes>()
+        .unwrap();
+
+    if proof_len > 1 {
+        for n in 1..proof_len {
+            let el = merkle_proof_json["proof"][n]
+                .as_str()
+                .unwrap()
+                .parse::<Bytes>()
+                .unwrap();
+            let concat_byte = [resultant.clone(), el].concat();
+
+            let keccak_res: [u8; 32] = keccak(concat_byte);
+            resultant = Bytes::from(keccak_res);
+        }
+    }
+
+    let tx_root_hex: String = hex::encode(resultant);
+    println!("tx_root_hex: {:?}", tx_root_hex);
+    println!("tx_root_expected: {:?}", transactions_root);
 
     let nonce: u64 = hex_to_u64(nonce_hex);
     let max_priority_fee_per_gas: U256 = max_priority_fee_per_gas_hex.parse().unwrap();
@@ -49,10 +85,9 @@ pub fn main() {
     let target_address: Address = target_address.trim_start_matches("0x").parse().unwrap();
 
     assert_eq!(
-      target_address,
-      to,
-      "Transaction not sent to phishing address"
-  );
+        target_address, to,
+        "Transaction not sent to phishing address"
+    );
 
     let r: U256 = r_hex.parse().unwrap();
     let s: U256 = s_hex.parse().unwrap();
@@ -70,15 +105,11 @@ pub fn main() {
         access_list: utils::access_list::AccessList(Vec::new()),
     };
 
-    let tx_signature: TxSignature = TxSignature {
-        v: v,
-        r: r,
-        s: s,
-    };
+    let tx_signature: TxSignature = TxSignature { v: v, r: r, s: s };
 
     let tx = Transaction {
-      essence: EthereumTxEssence::Eip1559(tx_essense.clone()) ,
-      signature: tx_signature
+        essence: EthereumTxEssence::Eip1559(tx_essense.clone()),
+        signature: tx_signature,
     };
 
     let tx_hash: FixedBytes<32> = tx.hash();
@@ -90,13 +121,11 @@ pub fn main() {
 
     let keccak_res: [u8; 32] = keccak(rlp_buf);
 
-
-
     let outputs = Outputs {
-      phishing_address: to.to_checksum(None),
-      phished_address: from.to_checksum(None),
-      transaction_hash: transactions_root,
-  };
+        phishing_address: to.to_checksum(None),
+        phished_address: from.to_checksum(None),
+        transaction_hash: transactions_root,
+    };
 
     env::commit(&outputs);
 }
