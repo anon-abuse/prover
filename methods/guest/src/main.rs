@@ -89,11 +89,6 @@ pub fn main() {
     eth_tx_essence.encode(&mut rlp_buf);
 
     let keccak_res: [u8; 32] = keccak(rlp_buf);
-    // let keccak_hex_string: String = hex::encode(keccak_res);
-
-    println!("phishing_address: ${:?}", to.to_checksum(None));
-    println!("phished_address: ${:?}", from.to_checksum(None));
-    println!("transaction_hash: ${:?}", tx_hash_string);
 
     let outputs = Outputs {
       phishing_address: to.to_checksum(None),
