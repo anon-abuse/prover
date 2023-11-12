@@ -1,5 +1,7 @@
 // #![no_std] // std support is experimental
 
+use std::hash;
+
 use risc0_zkvm::guest::env;
 // use utils::transactions;
 use alloy_primitives::{
@@ -44,32 +46,34 @@ pub fn main() {
     let r_hex = transaction_json["result"]["r"].as_str().unwrap();
     let s_hex = transaction_json["result"]["s"].as_str().unwrap();
 
+    let hash_hex = transaction_json["result"]["hash"].as_str().unwrap();
+
     let merkle_proof_json = parse(&merkle_proof).unwrap();
     let proof_len = merkle_proof_json["proof"].len();
 
-    let mut resultant: Bytes = merkle_proof_json["proof"][0]
-        .as_str()
-        .unwrap()
-        .parse::<Bytes>()
-        .unwrap();
+    // let mut resultant: Bytes = merkle_proof_json["proof"][0]
+    //     .as_str()
+    //     .unwrap()
+    //     .parse::<Bytes>()
+    //     .unwrap();
 
-    if proof_len > 1 {
-        for n in 1..proof_len {
-            let el = merkle_proof_json["proof"][n]
-                .as_str()
-                .unwrap()
-                .parse::<Bytes>()
-                .unwrap();
-            let concat_byte = [resultant.clone(), el].concat();
+    // if proof_len > 1 {
+    //     for n in 1..proof_len {
+    //         let el = merkle_proof_json["proof"][n]
+    //             .as_str()
+    //             .unwrap()
+    //             .parse::<Bytes>()
+    //             .unwrap();
+    //         let concat_byte = [resultant.clone(), el].concat();
 
-            let keccak_res: [u8; 32] = keccak(concat_byte);
-            resultant = Bytes::from(keccak_res);
-        }
-    }
+    //         let keccak_res: [u8; 32] = keccak(concat_byte);
+    //         resultant = Bytes::from(keccak_res);
+    //     }
+    // }
 
-    let tx_root_hex: String = hex::encode(resultant);
-    println!("tx_root_hex: {:?}", tx_root_hex);
-    println!("tx_root_expected: {:?}", transactions_root);
+    // let tx_root_hex: String = hex::encode(resultant);
+    // println!("tx_root_hex: {:?}", tx_root_hex);
+    // println!("tx_root_expected: {:?}", transactions_root);
 
     let nonce: u64 = hex_to_u64(nonce_hex);
     let max_priority_fee_per_gas: U256 = max_priority_fee_per_gas_hex.parse().unwrap();
@@ -83,6 +87,7 @@ pub fn main() {
     let to: Address = to_hex.trim_start_matches("0x").parse().unwrap();
     let from: Address = from_hex.trim_start_matches("0x").parse().unwrap();
     let target_address: Address = target_address.trim_start_matches("0x").parse().unwrap();
+    let transaction_hash: String = hash_hex.trim_start_matches("0x").parse().unwrap();
 
     assert_eq!(
         target_address, to,
@@ -113,13 +118,18 @@ pub fn main() {
     };
 
     let tx_hash: FixedBytes<32> = tx.hash();
-    let tx_hash_string = hex::encode(tx_hash);
 
     let eth_tx_essence = EthereumTxEssence::Eip1559(tx_essense);
     let mut rlp_buf: Vec<u8> = Vec::new();
     eth_tx_essence.encode(&mut rlp_buf);
 
-    let keccak_res: [u8; 32] = keccak(rlp_buf);
+    let tx_hash: String = hex::encode(tx_hash);
+
+    assert_eq!(
+      tx_hash, transaction_hash,
+      "Transaction not sent to phishing address"
+    );
+
 
     let outputs = Outputs {
         phishing_address: to.to_checksum(None),
