@@ -18,7 +18,7 @@ use utils::{
 risc0_zkvm::guest::entry!(main);
 
 pub fn main() {
-    let (transaction, target_address): (String, String) = env::read();
+    let (transaction, target_address, merkle_proof, transactions_root  ): (String, String, String, String) = env::read();
 
     let transaction_json = parse(&transaction).unwrap();
 
@@ -90,10 +90,12 @@ pub fn main() {
 
     let keccak_res: [u8; 32] = keccak(rlp_buf);
 
+
+
     let outputs = Outputs {
       phishing_address: to.to_checksum(None),
       phished_address: from.to_checksum(None),
-      transaction_hash: tx_hash_string,
+      transaction_hash: transactions_root,
   };
 
     env::commit(&outputs);
